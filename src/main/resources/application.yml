@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: commit-analyzer
+
+server:
+  port: 8080
+
+github:
+  base-url: https://api.github.com
+  token: ${GITHUB_TOKEN:}
+  connect-timeout-ms: 5000
+  read-timeout-ms: 15000
