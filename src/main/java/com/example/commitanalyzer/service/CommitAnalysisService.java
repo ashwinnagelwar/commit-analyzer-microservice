@@ -122,13 +122,14 @@ public class CommitAnalysisService {
         int page = 1;
 
         while (true) {
+            int currentPage = page;
             JsonNode pageResponse = githubWebClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/repos/{owner}/{repo}/commits")
                             .queryParam("since", since)
                             .queryParam("until", until)
                             .queryParam("per_page", 100)
-                            .queryParam("page", page)
+                            .queryParam("page", currentPage)
                             .build(owner, repo))
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, response -> response.bodyToMono(String.class)

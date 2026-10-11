@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Commit Analyzer</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #172033;
+            background: #f4f6fb;
+            font-synthesis: none;
+        }
+
+        * { box-sizing: border-box; }
+        body { margin: 0; min-width: 320px; }
+        button, input { font: inherit; }
+        .shell { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+        header { padding: 34px 0 26px; }
+        .brand { display: flex; align-items: center; gap: 13px; }
+        .brand-mark {
+            display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px;
+            background: #4f46e5; color: white; font-size: 23px; font-weight: 750;
+            box-shadow: 0 8px 20px #4f46e533;
+        }
+        h1 { margin: 0; font-size: 21px; letter-spacing: -.4px; }
+        .subtitle { margin: 4px 0 0; color: #69748a; font-size: 13px; }
+        main { padding-bottom: 54px; }
+        .panel {
+            background: white; border: 1px solid #e5e9f2; border-radius: 16px;
+            box-shadow: 0 8px 28px #1d2a4410;
+        }
+        .form-panel { padding: 24px; }
+        .section-heading { margin: 0 0 5px; font-size: 16px; }
+        .section-copy { margin: 0 0 20px; color: #69748a; font-size: 13px; }
+        .fields { display: grid; grid-template-columns: 1.2fr 1.2fr 1fr 1fr auto; gap: 14px; align-items: end; }
+        label { display: block; margin-bottom: 7px; color: #47536a; font-size: 12px; font-weight: 650; }
+        input {
+            width: 100%; height: 42px; border: 1px solid #d9deea; border-radius: 8px;
+            padding: 0 11px; color: #172033; outline: none; background: #fff;
+        }
+        input:focus { border-color: #6560e8; box-shadow: 0 0 0 3px #6560e81a; }
+        button {
+            height: 42px; padding: 0 17px; border: 0; border-radius: 8px;
+            background: #4f46e5; color: white; font-weight: 650; cursor: pointer;
+            white-space: nowrap; transition: background .15s ease;
+        }
+        button:hover { background: #4338ca; }
+        button:disabled { cursor: wait; opacity: .7; }
+        .notice { margin-top: 16px; padding: 12px 14px; border-radius: 9px; font-size: 13px; }
+        .notice[hidden], #results[hidden] { display: none; }
+        .notice.error { color: #9f2929; background: #fff1f0; border: 1px solid #ffd5d1; }
+        .notice.info { color: #394867; background: #f1f4ff; border: 1px solid #dce3ff; }
+        #results { margin-top: 22px; }
+        .result-top { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin: 0 2px 14px; }
+        .result-top h2 { margin: 0; font-size: 19px; letter-spacing: -.3px; }
+        .repo-link { color: #5651d8; font-size: 13px; text-decoration: none; }
+        .repo-link:hover { text-decoration: underline; }
+        .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
+        .stat { padding: 18px 20px; }
+        .stat-label { color: #69748a; font-size: 12px; font-weight: 600; }
+        .stat-value { display: block; margin-top: 5px; font-size: 27px; font-weight: 730; letter-spacing: -.8px; }
+        .data-panel { margin-top: 14px; overflow: hidden; }
+        .data-heading { display: flex; align-items: center; justify-content: space-between; padding: 17px 20px; border-bottom: 1px solid #edf0f5; }
+        .data-heading h3 { margin: 0; font-size: 14px; }
+        .data-heading span { color: #788399; font-size: 12px; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { padding: 10px 16px; color: #788399; background: #fafbfe; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
+        td { padding: 13px 16px; border-top: 1px solid #f0f2f6; color: #354158; font-size: 12px; vertical-align: top; }
+        .file-path { color: #29344b; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+        .message { max-width: 480px; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .sha { color: #5b57cb; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; text-decoration: none; }
+        .badge { display: inline-block; padding: 3px 7px; border-radius: 999px; background: #f0f2f8; color: #566178; font-size: 10px; }
+        .add { color: #16834d; } .del { color: #c44848; }
+        details { margin-top: 8px; }
+        summary { color: #5550ca; cursor: pointer; font-size: 11px; }
+        pre { max-width: 560px; max-height: 280px; overflow: auto; padding: 10px; border-radius: 7px; background: #f7f8fb; color: #3c465b; font-size: 10px; white-space: pre-wrap; }
+        .empty { padding: 22px 16px; color: #788399; text-align: center; font-size: 13px; }
+        @media (max-width: 850px) {
+            .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .fields button { width: 100%; }
+        }
+        @media (max-width: 540px) {
+            .shell { width: min(100% - 24px, 1120px); }
+            header { padding-top: 22px; }
+            .form-panel { padding: 18px; }
+            .fields, .stats { grid-template-columns: 1fr; }
+            .result-top { align-items: start; flex-direction: column; }
+            td, th { padding-right: 12px; padding-left: 12px; }
+        }
+    </style>
+</head>
+<body>
+<header class="shell">
+    <div class="brand">
+        <div class="brand-mark" aria-hidden="true">↗</div>
+        <div>
+            <h1>Commit Analyzer</h1>
+            <p class="subtitle">Explore repository activity and file changes</p>
+        </div>
+    </div>
+</header>
+<main class="shell">
+    <section class="panel form-panel" aria-labelledby="form-title">
+        <h2 class="section-heading" id="form-title">Analyze a repository</h2>
+        <p class="section-copy">Choose a GitHub repository and date range to summarize its commits.</p>
+        <form id="analysis-form">
+            <div class="fields">
+                <div>
+                    <label for="owner">Owner</label>
+                    <input id="owner" name="owner" value="ashwinnagelwar" required autocomplete="off">
+                </div>
+                <div>
+                    <label for="repo">Repository</label>
+                    <input id="repo" name="repo" value="Microservice-Spring-Security" required autocomplete="off">
+                </div>
+                <div>
+                    <label for="from">From</label>
+                    <input id="from" name="from" type="date" value="2024-10-07" required>
+                </div>
+                <div>
+                    <label for="to">To</label>
+                    <input id="to" name="to" type="date" value="2024-11-30" required>
+                </div>
+                <button id="submit" type="submit">Analyze commits</button>
+            </div>
+        </form>
+        <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+    </section>
+
+    <section id="results" aria-live="polite" hidden>
+        <div class="result-top">
+            <div>
+                <h2 id="result-title"></h2>
+                <p class="subtitle" id="date-range"></p>
+            </div>
+            <a class="repo-link" id="repo-link" target="_blank" rel="noopener noreferrer">View on GitHub ↗</a>
+        </div>
+        <div class="stats">
+            <article class="panel stat">
+                <span class="stat-label">Commits analyzed</span>
+                <strong class="stat-value" id="commit-count">0</strong>
+            </article>
+            <article class="panel stat">
+                <span class="stat-label">Files changed</span>
+                <strong class="stat-value" id="file-count">0</strong>
+            </article>
+        </div>
+        <section class="panel data-panel" aria-labelledby="files-heading">
+            <div class="data-heading"><h3 id="files-heading">File changes</h3><span id="files-caption"></span></div>
+            <div class="table-wrap" id="files-table"></div>
+        </section>
+        <section class="panel data-panel" aria-labelledby="commits-heading">
+            <div class="data-heading"><h3 id="commits-heading">Commits</h3><span id="commits-caption"></span></div>
+            <div class="table-wrap" id="commits-table"></div>
+        </section>
+    </section>
+</main>
+<script>
+    const form = document.querySelector("#analysis-form");
+    const submitButton = document.querySelector("#submit");
+    const notice = document.querySelector("#notice");
+    const results = document.querySelector("#results");
+
+    function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, character => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[character]);
+    }
+
+    function showNotice(message, type) {
+        notice.textContent = message;
+        notice.className = `notice ${type}`;
+        notice.hidden = false;
+    }
+
+    function renderFiles(files) {
+        if (!files.length) {
+            return '<div class="empty">No file changes found for this date range.</div>';
+        }
+
+        const rows = files.map(file => {
+            const patches = (file.patchFragments || []).map(patch =>
+                `<details><summary>View diff</summary><pre>${escapeHtml(patch)}</pre></details>`
+            ).join("");
+            return `<tr>
+                <td><span class="file-path">${escapeHtml(file.path)}</span>${patches}</td>
+                <td><span class="badge">${escapeHtml(file.status)}</span></td>
+                <td><span class="add">+${Number(file.additions) || 0}</span> / <span class="del">-${Number(file.deletions) || 0}</span></td>
+                <td>${Number(file.totalChangedLines) || 0}</td>
+            </tr>`;
+        }).join("");
+        return `<table><thead><tr><th>File</th><th>Status</th><th>Added / deleted</th><th>Total lines</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function renderCommits(commits) {
+        if (!commits.length) {
+            return '<div class="empty">No commits found for this date range.</div>';
+        }
+
+        const rows = commits.map(commit => {
+            const shortSha = String(commit.sha || "").slice(0, 7);
+            const commitUrl = `https://github.com/${encodeURIComponent(form.elements.owner.value.trim())}/${encodeURIComponent(form.elements.repo.value.trim())}/commit/${encodeURIComponent(commit.sha || "")}`;
+            return `<tr>
+                <td><a class="sha" href="${escapeHtml(commitUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(shortSha)}</a></td>
+                <td><div class="message">${escapeHtml(commit.message)}</div></td>
+                <td>${escapeHtml(commit.committedAt)}</td>
+                <td>${(commit.files || []).length}</td>
+            </tr>`;
+        }).join("");
+        return `<table><thead><tr><th>Commit</th><th>Message</th><th>Committed at</th><th>Files</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function renderAnalysis(data) {
+        const owner = form.elements.owner.value.trim();
+        const repo = form.elements.repo.value.trim();
+        document.querySelector("#result-title").textContent = `${data.owner}/${data.repo}`;
+        document.querySelector("#date-range").textContent = `${data.from} to ${data.to}`;
+        document.querySelector("#repo-link").href = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+        document.querySelector("#commit-count").textContent = data.totalCommits;
+        document.querySelector("#file-count").textContent = data.totalFilesChanged;
+        document.querySelector("#files-caption").textContent = `${data.fileChanges.length} files`;
+        document.querySelector("#commits-caption").textContent = `${data.commits.length} commits`;
+        document.querySelector("#files-table").innerHTML = renderFiles(data.fileChanges || []);
+        document.querySelector("#commits-table").innerHTML = renderCommits(data.commits || []);
+        results.hidden = false;
+    }
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+        notice.hidden = true;
+        results.hidden = true;
+
+        const values = new FormData(form);
+        const from = values.get("from");
+        const to = values.get("to");
+        if (from > to) {
+            showNotice("The start date must be on or before the end date.", "error");
+            return;
+        }
+
+        const query = new URLSearchParams(values);
+        submitButton.disabled = true;
+        submitButton.textContent = "Analyzing…";
+        showNotice("Fetching commits from GitHub. Large date ranges may take a little while.", "info");
+
+        try {
+            const response = await fetch(`/api/v1/commits/analyze?${query.toString()}`, {
+                headers: { Accept: "application/json" }
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || `Request failed with status ${response.status}.`);
+            }
+            renderAnalysis(data);
+            notice.hidden = true;
+        } catch (error) {
+            showNotice(error.message || "Could not reach the analysis API. Check that the application is running and try again.", "error");
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = "Analyze commits";
+        }
+    });
+</script>
+</body>
+</html>
